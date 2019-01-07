@@ -26,6 +26,14 @@ namespace Screenshot.Widgets {
 
         private bool dragging = false;
 
+        private enum CursorLocation {
+            TOP_LEFT,
+            TOP_RIGHT,
+            BOTTOM_LEFT,
+            BOTTOM_RIGHT
+        }
+        private CursorLocation cursor_location;
+
         construct {
             type = Gtk.WindowType.POPUP;
         }
@@ -83,6 +91,42 @@ namespace Screenshot.Widgets {
             x = int.min (x, (int)e.x_root);
             y = int.min (y, (int)e.y_root);
 
+            //width += 50;
+            //height -= 50;
+            if (x == (int)e.x_root && y == (int)e.y_root) {
+                cursor_location = CursorLocation.TOP_LEFT;
+                /*x -= 50;
+                y -= 50;
+                width += 50;
+                height += 50;*/
+                stdout.printf("top left\n");
+            }
+            else if (x == start_point.x && y == (int)e.y_root) {
+                cursor_location = CursorLocation.TOP_RIGHT;
+                //width += 50;
+                //y -= 50;
+                //height += 50;
+                stdout.printf("top right\n");
+            }
+            else if (x == (int) e.x_root && y == start_point.y) {
+                cursor_location = CursorLocation.BOTTOM_LEFT;
+                //x -= 50;
+                //y += 50;
+                //width += 50;
+
+                stdout.printf("bottom left\n");
+            }
+            else if (x == start_point.x && y == start_point.y) {
+                cursor_location = CursorLocation.BOTTOM_RIGHT;
+                //width += 50;
+                //height += 50;
+                stdout.printf("bottom right\n");
+            }
+            x -= 50;
+            y -= 50;
+            width += 100;
+            height += 100;
+
             move (x, y);
             resize (width, height);
 
@@ -139,17 +183,80 @@ namespace Screenshot.Widgets {
                 return true;
             }
 
-            int w = get_allocated_width ();
-            int h = get_allocated_height ();
+            int startx = 50;
+            int starty = 50;
+            int w = get_allocated_width () - 100;
+            int h = get_allocated_height () - 100;
 
-            ctx.rectangle (0, 0, w, h);
+            ctx.rectangle (startx, starty, w, h);
             ctx.set_source_rgba (0.1, 0.1, 0.1, 0.2);
             ctx.fill ();
 
-            ctx.rectangle (0, 0, w, h);
+            ctx.rectangle (startx, starty, w, h);
             ctx.set_source_rgb (0.7, 0.7, 0.7);
             ctx.set_line_width (1.0);
             ctx.stroke ();
+
+            var manager = Gdk.Display.get_default ().get_device_manager ();
+            var pointer = manager.get_client_pointer ();
+            Gdk.Screen screen;
+            int cursorx;
+            int cursory;
+            int winx;
+            int winy;
+            pointer.get_position (out screen, out cursorx, out cursory);
+            get_window().get_position(out winx, out winy);
+            cursorx -= winx;
+            cursory -= winy;
+
+            int font_size = 10;
+
+            ctx.set_source_rgba(0.1, 0.1, 0.1, 0.8);
+            ctx.select_font_face("Purisa", Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+            ctx.set_font_size (font_size);
+
+            Cairo.TextExtents extents;
+            ctx.text_extents(w.to_string(), out extents);
+            switch (cursor_location) {
+                case CursorLocation.TOP_LEFT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 1 - 5);
+                    break;
+                }
+                case CursorLocation.TOP_RIGHT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 2);
+                    break;
+                }
+                case CursorLocation.BOTTOM_LEFT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 2);
+                    break;
+                }
+                case CursorLocation.BOTTOM_RIGHT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 2);
+                    break;
+                }
+            }
+            ctx.show_text(w.to_string());
+
+            ctx.text_extents(h.to_string(), out extents);
+            switch (cursor_location) {
+                case CursorLocation.TOP_LEFT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 0 - 5);
+                    break;
+                }
+                case CursorLocation.TOP_RIGHT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 1);
+                    break;
+                }
+                case CursorLocation.BOTTOM_LEFT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 1);
+                    break;
+                }
+                case CursorLocation.BOTTOM_RIGHT: {
+                    ctx.move_to (cursorx - extents.width, cursory - font_size * 1);
+                    break;
+                }
+            }
+            ctx.show_text(h.to_string());
 
             return base.draw (ctx);
         }
